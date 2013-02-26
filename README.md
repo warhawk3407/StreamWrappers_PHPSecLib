@@ -7,5 +7,5 @@
 > This class implements a basic read/write SFTP stream wrapper
 > based on 'phpseclib'
 
-* [Browse Git](https://github.com/phpseclib/phpseclib)
+* [Browse Git](https://github.com/warhawk3407/SFTP_StreamWrapper_PHPSecLib)
 * [PHPSecLib](http://phpseclib.sourceforge.net/)
