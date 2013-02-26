@@ -175,10 +175,76 @@ class sftp_stream_wrapper{
 		return FALSE; // Not implemented
 	}
 
-    function stream_metadata($path, $option, $var)
-    {
-        return FALSE; // Not implemented
-    }
+	/**
+	 * https://bugs.php.net/bug.php?id=64246
+	 *
+	 *
+	 * Bug #64246 	stream_metadata constants not defined
+	 * Submitted: 	2013-02-19 20:00 UTC 	Modified: 	-
+	 * From: 	terrafrost@php.net 	Assigned:
+	 * Status: 	Open 	Package: 	Streams related
+	 * PHP Version: 	5.4.11 	OS: 	Windows 7
+	 * Private report: 	No 	CVE-ID:
+	 */
+/*
+	function stream_metadata($path, $option, $var)
+	{
+		$url = parse_url($path);
+
+		switch ($option) {
+			case PHP_STREAM_META_TOUCH:
+				$touch = $this->ressource->touch($url['path'], $var[0], $var[1]);
+
+				if ($touch == 1) {
+					return TRUE;
+				} else {
+					return FALSE;
+				}
+				break;
+
+			case PHP_STREAM_META_OWNER_NAME:
+				return FALSE;
+				break;
+
+			case PHP_STREAM_META_OWNER:
+				$chown = $this->ressource->chown($url['path'], $var);
+
+				if ($chown == 1) {
+					return TRUE;
+				} else {
+					return FALSE;
+				}
+				break;
+
+			case PHP_STREAM_META_GROUP_NAME:
+				return FALSE;
+				break;
+
+			case PHP_STREAM_META_GROUP:
+				$chgrp = $this->ressource->chgrp($url['path'], $var);
+
+				if ($chgrp == 1) {
+					return TRUE;
+				} else {
+					return FALSE;
+				}
+				break;
+
+			case PHP_STREAM_META_ACCESS:
+				$chmod = $this->ressource->chmod($var, $url['path']);
+
+				if ($chmod == 1) {
+					return TRUE;
+				} else {
+					return FALSE;
+				}
+				break;
+
+			default:
+				return false;
+		}
+	}
+*/
 
 	function stream_read($count)
 	{
@@ -293,6 +359,6 @@ class sftp_stream_wrapper{
 ###################################################################
 
 stream_wrapper_register('ssh2.sftp', 'sftp_stream_wrapper')
-    or die ('Failed to register protocol');
+	or die ('Failed to register protocol');
 
 ?>
