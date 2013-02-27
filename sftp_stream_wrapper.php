@@ -274,7 +274,7 @@ class sftp_stream_wrapper{
 
 	function stream_read($count)
 	{
-		$chunk = $this->ressource->get( $this->path, FALSE, $this->position, $count ); // GET Chunk
+		$chunk = $this->ressource->get( $this->path, FALSE, $this->position, $count );
 
 		$this->position += strlen($chunk);
 
@@ -315,7 +315,7 @@ class sftp_stream_wrapper{
 				return false;
 		}
 
-		if ($newPosition >= 0 && $newPosition <= $filesize) {
+		if ($newPosition >= 0) {
 			$this->position = $newPosition;
 			return true;
 		} else {
@@ -344,10 +344,10 @@ class sftp_stream_wrapper{
 		return $this->position;
 	}
 
-/*
+
 	function stream_truncate($new_size)
 	{
-		$data = substr($this->ressource->get($this->path), 0, $new_size);
+		$data = $this->ressource->get( $this->path, FALSE, 0, $new_size );
 
 		$this->ressource->put($this->path, $data);
 
@@ -359,9 +359,9 @@ class sftp_stream_wrapper{
 		$this->ressource->put($this->path, $data, NET_SFTP_STRING, $this->position);
 
 		$this->position += strlen($data);
+
 		return strlen($data);
 	}
-*/
 
 	function unlink($path)
 	{
