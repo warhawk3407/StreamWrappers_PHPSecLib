@@ -196,18 +196,6 @@ class sftp_stream_wrapper{
 		return FALSE; // Not implemented
 	}
 
-	function stream_eof()
-	{
-		$stat = $this->ressource->stat($this->path);
-		$filesize = $stat['size'];
-
-		if ($this->position >= $filesize) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
-	}
-
 	function stream_flush()
 	{
 		return FALSE; // Not implemented
@@ -286,43 +274,52 @@ class sftp_stream_wrapper{
 
 	function stream_read($count)
 	{
-		$ret = substr($this->ressource->get($this->path), $this->position, $count);
+		$chunk = $this->ressource->get( $this->path, FALSE, $this->position, $count ); // GET Chunk
 
-		$this->position += strlen($ret);
-		return $ret;
+		$this->position += strlen($chunk);
+
+		return $chunk;
+	}
+
+	function stream_eof()
+	{
+		$stat = $this->ressource->stat($this->path);
+		$filesize = $stat['size'];
+
+		if ($this->position >= $filesize) {
+			return TRUE;
+		} else {
+			return FALSE;
+		}
 	}
 
 	function stream_seek($offset, $whence)
 	{
+		$stat = $this->ressource->stat($this->path);
+		$filesize = $stat['size'];
+
 		switch ($whence) {
 			case SEEK_SET:
-				$this->position = $offset;
-				return true;
+				$newPosition = $offset;
 				break;
 
 			case SEEK_CUR:
-				if ($offset >= 0) {
-					$this->position += $offset;
-					return true;
-				} else {
-					return false;
-				}
+				$newPosition += $offset;
 				break;
 
 			case SEEK_END:
-				$stat = $this->ressource->stat($this->path);
-				$filesize = $stat['size'];
-
-				if ( ($filesize + $offset) >= 0) {
-					$this->position = $filesize + $offset;
-					return true;
-				} else {
-					return false;
-				}
+				$newPosition = $filesize + $offset;
 				break;
 
 			default:
 				return false;
+		}
+
+		if ($newPosition >= 0 && $newPosition <= $filesize) {
+			$this->position = $newPosition;
+			return true;
+		} else {
+			return false;
 		}
 	}
 
@@ -347,6 +344,7 @@ class sftp_stream_wrapper{
 		return $this->position;
 	}
 
+/*
 	function stream_truncate($new_size)
 	{
 		$data = substr($this->ressource->get($this->path), 0, $new_size);
@@ -363,6 +361,7 @@ class sftp_stream_wrapper{
 		$this->position += strlen($data);
 		return strlen($data);
 	}
+*/
 
 	function unlink($path)
 	{
