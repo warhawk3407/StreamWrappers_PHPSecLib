@@ -6,6 +6,8 @@
 #
 # protocol: ssh2.sftp
 # classname: sftp_stream_wrapper
+# requirement: PHP 5.4.0
+#
 #
 # Date: February 2013
 #
@@ -35,6 +37,26 @@
 if (!class_exists('Net_SFTP')) {
     exit('Fatal Error: Net_SFTP (PHPSecLib) is not defined!');
 }
+
+if (version_compare(PHP_VERSION, '5.4.0') == -1) {
+	exit('PHP 5.4.0 is required!');
+}
+
+
+
+/**
+ * Stream Metadata: Engine part
+ *
+ * The options supported currently are:
+ */
+define('PHP_STREAM_META_TOUCH',			1);
+define('PHP_STREAM_META_OWNER_NAME',	2);
+define('PHP_STREAM_META_OWNER',			3);
+define('PHP_STREAM_META_GROUP_NAME',	4);
+define('PHP_STREAM_META_GROUP',			5);
+define('PHP_STREAM_META_ACCESS',		6);
+
+
 
 class sftp_stream_wrapper{
 
@@ -72,6 +94,10 @@ class sftp_stream_wrapper{
 
 		$this->position = 0;
 
+		if ($options == STREAM_USE_PATH) {
+			$opened_path = $this->ressource->pwd();
+		}
+
 		return TRUE;
 	}
 
@@ -82,26 +108,27 @@ class sftp_stream_wrapper{
 		$this->position = 0;
 	}
 
+/*
 	function dir_closedir()
 	{
 		$chdir = $this->ressource->chdir('..');
 
-		if( $chdir == 1 ){
+		if( $chdir == 1 ) {
 			return TRUE;
-		}else{
+		} else {
 			return FALSE;
 		}
 	}
 
 	function dir_opendir($path, $options)
 	{
-		$url = parse_url($path);
+		$this->stream_open($path, NULL, $options, $opened_path);
 
-		$chdir = $this->ressource->chdir($url['path']);
+		$chdir = $this->ressource->chdir($this->path);
 
-		if( $chdir == 1 ){
+		if( $chdir == 1 ) {
 			return TRUE;
-		}else{
+		} else {
 			return FALSE;
 		}
 	}
@@ -115,36 +142,47 @@ class sftp_stream_wrapper{
 	{
 		return FALSE; // Not implemented
 	}
+*/
 
 	function mkdir($path, $mode, $options)
 	{
-		$url = parse_url($path);
+		$this->stream_open($path, $mode, $options, $opened_path);
 
-		$mkdir = $this->ressource->mkdir($url['path']);
+		$mkdir = $this->ressource->mkdir($this->path);
 
-		if( $mkdir == 1 ){
+		$this->stream_close();
+
+		if( $mkdir == 1 ) {
 			return TRUE;
-		}else{
+		} else {
 			return FALSE;
 		}
 	}
 
 	function rmdir($path, $options)
 	{
-		$url = parse_url($path);
+		$this->stream_open($path, NULL, $options, $opened_path);
 
-		$rmdir = $this->ressource->rmdir($url['path']);
+		$rmdir = $this->ressource->rmdir($this->path);
 
-		if($rmdir == 1){
+		$this->stream_close();
+
+		if( $rmdir == 1 ) {
 			return TRUE;
-		}else{
+		} else {
 			return FALSE;
 		}
 	}
 
 	function rename($path_from, $path_to)
 	{
-		$rename = $this->ressource->rename($path_from, $path_to);
+		$this->stream_open($path_from, NULL, NULL, $opened_path);
+
+		$path_to_url = parse_url($path_to);
+
+		$rename = $this->ressource->rename($this->path, $path_to_url['path']);
+
+		$this->stream_close();
 
 		if($rename == 1){
 			return TRUE;
@@ -175,25 +213,15 @@ class sftp_stream_wrapper{
 		return FALSE; // Not implemented
 	}
 
-	/**
-	 * https://bugs.php.net/bug.php?id=64246
-	 *
-	 *
-	 * Bug #64246 	stream_metadata constants not defined
-	 * Submitted: 	2013-02-19 20:00 UTC 	Modified: 	-
-	 * From: 	terrafrost@php.net 	Assigned:
-	 * Status: 	Open 	Package: 	Streams related
-	 * PHP Version: 	5.4.11 	OS: 	Windows 7
-	 * Private report: 	No 	CVE-ID:
-	 */
-/*
 	function stream_metadata($path, $option, $var)
 	{
-		$url = parse_url($path);
+		$this->stream_open($path, NULL, $option, $opened_path);
 
 		switch ($option) {
 			case PHP_STREAM_META_TOUCH:
-				$touch = $this->ressource->touch($url['path'], $var[0], $var[1]);
+				$touch = $this->ressource->touch($this->path, $var[1], $var[0]);
+
+				$this->stream_close();
 
 				if ($touch == 1) {
 					return TRUE;
@@ -203,11 +231,15 @@ class sftp_stream_wrapper{
 				break;
 
 			case PHP_STREAM_META_OWNER_NAME:
+				$this->stream_close();
+
 				return FALSE;
 				break;
 
 			case PHP_STREAM_META_OWNER:
-				$chown = $this->ressource->chown($url['path'], $var);
+				$chown = $this->ressource->chown($this->path, $var);
+
+				$this->stream_close();
 
 				if ($chown == 1) {
 					return TRUE;
@@ -217,11 +249,15 @@ class sftp_stream_wrapper{
 				break;
 
 			case PHP_STREAM_META_GROUP_NAME:
+				$this->stream_close();
+
 				return FALSE;
 				break;
 
 			case PHP_STREAM_META_GROUP:
-				$chgrp = $this->ressource->chgrp($url['path'], $var);
+				$chgrp = $this->ressource->chgrp($this->path, $var);
+
+				$this->stream_close();
 
 				if ($chgrp == 1) {
 					return TRUE;
@@ -231,7 +267,9 @@ class sftp_stream_wrapper{
 				break;
 
 			case PHP_STREAM_META_ACCESS:
-				$chmod = $this->ressource->chmod($var, $url['path']);
+				$chmod = $this->ressource->chmod($var, $this->path);
+
+				$this->stream_close();
 
 				if ($chmod == 1) {
 					return TRUE;
@@ -241,10 +279,10 @@ class sftp_stream_wrapper{
 				break;
 
 			default:
+				$this->stream_close();
 				return false;
 		}
 	}
-*/
 
 	function stream_read($count)
 	{
@@ -297,9 +335,9 @@ class sftp_stream_wrapper{
 	{
 		$stat = $this->ressource->stat($this->path);
 
-		if(!empty($stat)){
+		if( !empty($stat) ) {
 			return $stat;
-		}else{
+		} else {
 			return array();
 		}
 	}
@@ -328,26 +366,30 @@ class sftp_stream_wrapper{
 
 	function unlink($path)
 	{
-		$url = parse_url($path);
+		$this->stream_open($path, NULL, NULL, $opened_path);
 
-		$del = $this->ressource->delete($url['path']);
+		$del = $this->ressource->delete($this->path);
 
-		if($del == 1){
+		$this->stream_close();
+
+		if( $del == 1 ) {
 			return TRUE;
-		}else{
+		} else {
 			return FALSE;
 		}
 	}
 
 	function url_stat($path, $flags)
 	{
-		$url = parse_url($path);
+		$this->stream_open($path, NULL, NULL, $opened_path);
 
-		$stat = $this->ressource->stat($url['path']);
+		$stat = $this->ressource->stat($this->path);
 
-		if(!empty($stat)){
+		$this->stream_close();
+
+		if( !empty($stat) ) {
 			return $stat;
-		}else{
+		} else {
 			return array();
 		}
 	}
