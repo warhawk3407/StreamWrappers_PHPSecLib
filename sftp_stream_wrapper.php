@@ -1,14 +1,15 @@
 <?php
 ###################################################################
-# sftp.php
+# sftp_stream_wrapper.php
+#
 # This class implements a basic read/write SFTP stream wrapper
 # based on 'phpseclib'
 #
-# protocol: ssh2.sftp
-# classname: sftp_stream_wrapper
-# requirement: PHP 5.4.0
+# Protocol: ssh2.sftp
+# Classname: sftp_stream_wrapper
+# Requirement: PHP 5.4.0
 #
-#
+# Version: 1.0.0
 # Date: February 2013
 #
 # Author:  Nikita ROUSSEAU <warhawk3407@gmail.com>
@@ -35,7 +36,7 @@
  */
 
 if (!class_exists('Net_SFTP')) {
-    exit('Fatal Error: Net_SFTP (PHPSecLib) is not defined!');
+	exit('Fatal Error: Net_SFTP (PHPSecLib) is not defined!');
 }
 
 if (version_compare(PHP_VERSION, '5.4.0') == -1) {
@@ -348,6 +349,10 @@ class sftp_stream_wrapper{
 		$stat = $this->ressource->stat($this->path);
 
 		if( !empty($stat) ) {
+			// mode fix
+			$stat['mode'] = $stat['permissions'];
+			unset($stat['permissions']);
+
 			return $stat;
 		} else {
 			return array();
@@ -402,6 +407,10 @@ class sftp_stream_wrapper{
 		$this->stream_close();
 
 		if( !empty($stat) ) {
+			// mode fix
+			$stat['mode'] = $stat['permissions'];
+			unset($stat['permissions']);
+
 			return $stat;
 		} else {
 			return array();
