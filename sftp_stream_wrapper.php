@@ -300,8 +300,7 @@ class sftp_stream_wrapper{
 
 	function stream_eof()
 	{
-		$stat = $this->ressource->stat($this->path);
-		$filesize = $stat['size'];
+		$filesize = $this->ressource->size($this->path);
 
 		if ($this->position >= $filesize) {
 			return TRUE;
@@ -312,8 +311,7 @@ class sftp_stream_wrapper{
 
 	function stream_seek($offset, $whence)
 	{
-		$stat = $this->ressource->stat($this->path);
-		$filesize = $stat['size'];
+		$filesize = $this->ressource->size($this->path);
 
 		switch ($whence) {
 			case SEEK_SET:
