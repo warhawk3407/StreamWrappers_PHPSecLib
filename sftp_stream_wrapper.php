@@ -163,9 +163,9 @@ class sftp_stream_wrapper{
 
 	function mkdir($path, $mode, $options)
 	{
-		$this->stream_open($path, $mode, $options, $opened_path);
+		$this->stream_open($path, NULL, NULL, $opened_path);
 
-		$mkdir = $this->ressource->mkdir($this->path);
+		$mkdir = $this->ressource->mkdir($this->path, $mode, $options);
 
 		$this->stream_close();
 
@@ -178,7 +178,7 @@ class sftp_stream_wrapper{
 
 	function rmdir($path, $options)
 	{
-		$this->stream_open($path, NULL, $options, $opened_path);
+		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		$rmdir = $this->ressource->rmdir($this->path);
 
@@ -220,7 +220,7 @@ class sftp_stream_wrapper{
 
 	function stream_metadata($path, $option, $var)
 	{
-		$this->stream_open($path, NULL, $option, $opened_path);
+		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		switch ($option) {
 			case PHP_STREAM_META_TOUCH:
