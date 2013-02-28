@@ -35,8 +35,11 @@
  * THE SOFTWARE.
  */
 
+/**
+ * Include Net_SFTP
+ */
 if (!class_exists('Net_SFTP')) {
-	exit('Fatal Error: Net_SFTP (PHPSecLib) is not defined!');
+    require_once('/phpseclib/SFTP.php');
 }
 
 if (version_compare(PHP_VERSION, '5.4.0') == -1) {

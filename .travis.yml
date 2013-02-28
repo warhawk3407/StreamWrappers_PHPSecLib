@@ -3,7 +3,5 @@ language: php
 php:
   - 5.4
 
-before_script: php phpseclib/SFTP.php
-
 script:
   - phpunit --verbose UnitTest sftp_stream_wrapper.php
