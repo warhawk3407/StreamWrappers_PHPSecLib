@@ -108,18 +108,6 @@ class sftp_stream_wrapper{
 		$this->position = 0;
 	}
 
-/*
-	function dir_closedir()
-	{
-		$chdir = $this->ressource->chdir('..');
-
-		if( $chdir == 1 ) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
-	}
-
 	function dir_opendir($path, $options)
 	{
 		$this->stream_open($path, NULL, $options, $opened_path);
@@ -133,16 +121,45 @@ class sftp_stream_wrapper{
 		}
 	}
 
+	function dir_closedir()
+	{
+		//$chdir = $this->ressource->chdir('..');
+
+		$this->stream_close();
+
+		/*
+		if( $chdir == 1 ) {
+			return TRUE;
+		} else {
+			return FALSE;
+		}
+		*/
+
+		return TRUE;
+	}
+
 	function dir_readdir()
 	{
-		return 'FALSE'; // Not implemented
+		$nlist = $this->ressource->nlist($this->path);
+
+		if ( array_key_exists($this->position, $nlist) ) {
+			$filename = $nlist[$this->position];
+
+			$this->position += 1;
+
+			return $filename;
+		}
+		else {
+			return FALSE;
+		}
 	}
 
 	function dir_rewinddir()
 	{
-		return FALSE; // Not implemented
+		$this->position = 0;
+
+		return TRUE;
 	}
-*/
 
 	function mkdir($path, $mode, $options)
 	{
@@ -184,9 +201,9 @@ class sftp_stream_wrapper{
 
 		$this->stream_close();
 
-		if($rename == 1){
+		if( $rename == 1) {
 			return TRUE;
-		}else{
+		} else {
 			return FALSE;
 		}
 	}
@@ -396,7 +413,7 @@ class sftp_stream_wrapper{
 }
 
 ###################################################################
-# Register 'sftp' protocol
+# Register 'ssh2.sftp' protocol
 ###################################################################
 
 stream_wrapper_register('ssh2.sftp', 'sftp_stream_wrapper')
