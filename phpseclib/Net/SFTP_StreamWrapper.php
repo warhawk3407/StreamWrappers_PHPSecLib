@@ -59,7 +59,7 @@
  * <code>
  * <?php
  *		include('Net/SFTP.php');
- *		include('Net/Net_SFTP_StreamWrapper.php');
+ *		include('Net/SFTP_StreamWrapper.php');
  *
  *		$host = 'www.domain.tld';
  *		$port = '22';
