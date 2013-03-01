@@ -1,19 +1,38 @@
 <?php
-###################################################################
-# sftp_stream_wrapper.php
-#
-# This class implements a basic read/write SFTP stream wrapper
-# based on 'phpseclib'
-#
-# Protocol: ssh2.sftp
-# Classname: sftp_stream_wrapper
-# Requirement: PHP 5.4.0
-#
-# Version: 1.0.0
-# Date: February 2013
-#
-# Author:  Nikita ROUSSEAU <warhawk3407@gmail.com>
-###################################################################
+
+/**
+ * PHP 5.4.0
+ *
+ * This class implements a read/write SFTP stream wrapper based on 'phpseclib'
+ *
+ * Requirement:	phpseclib - PHP Secure Communications Library
+ *
+ * Filename:	SFTP_StreamWrapper.php
+ * Classname:	SFTP_StreamWrapper
+ *
+ * ###################################################################
+ * # Protocol									ssh2.sftp
+ * ###################################################################
+ * # Restricted by allow_url_fopen				Unknown
+ * # Allows Reading								Yes
+ * # Allows Writing								Yes
+ * # Allows Appending							Unknown
+ * # Allows Simultaneous Reading and Writing	Unknown
+ * # Supports stat()							Yes
+ * # Supports unlink()							Yes
+ * # Supports rename()							Yes
+ * # Supports mkdir()							Yes
+ * # Supports rmdir()							Yes
+ * ###################################################################
+ *
+ * @category	Net
+ * @package		Net_SFTP_StreamWrapper
+ * @author		Warhawk3407 a.k.a Nikita ROUSSEAU <warhawk3407@gmail.com>
+ * @copyright	2013 Nikita Rousseau
+ * @license		http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @version		Release: @1.0.0@
+ * @date		March 2013
+ */
 
 /**
  * LICENSE: Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,12 +55,37 @@
  */
 
 /**
+ * Here's a short example of how to use this library:
+ * <code>
+ * <?php
+ *		include('Net/SFTP.php');
+ *		include('Net/Net_SFTP_StreamWrapper.php');
+ *
+ *		$host = 'www.domain.tld';
+ *		$port = '22';
+ *		$user = 'user';
+ *		$pass = 'secret';
+ *		$path = '/home/user/file';
+ *
+ *		$url = "ssh2.sftp://".$user.':'.$pass.'@'.$host.':'.$port.$path;
+ *
+ *		print_r(url_stat($url));
+ * ?>
+ * </code>
+ */
+
+
+
+/**
  * Include Net_SFTP
  */
 if (!class_exists('Net_SFTP')) {
-    require_once('/phpseclib/SFTP.php');
+    require_once('Net/SFTP.php');
 }
 
+/**
+ * Check PHP_VERSION
+ */
 if (version_compare(PHP_VERSION, '5.4.0') == -1) {
 	exit('PHP 5.4.0 is required!');
 }
@@ -62,23 +106,68 @@ define('PHP_STREAM_META_ACCESS',		6);
 
 
 
-class sftp_stream_wrapper{
+/**
+ * Pure-PHP implementations of SFTP as a stream wrapper class
+ *
+ * @author	Nikita ROUSSEAU <warhawk3407@gmail.com>
+ * @version	1.0.0
+ * @access	public
+ * @package	Net_SFTP_StreamWrapper
+ * @link	http://www.php.net/manual/en/book.stream.php
+ */
+class SFTP_StreamWrapper{
 
-	/* SFTP VARS */
+	/**
+	 * SFTP VARS
+	 *
+	 * @var String
+	 * @see Net_SFTP_StreamWrapper::stream_open()
+	 * @access private
+	 */
 	var $host;
 	var $port;
 	var $user;
 	var $pass;
 
-	/* SFTP Object */
+	/**
+	 * SFTP Object
+	 *
+	 * @var Net_SFTP
+	 * @access private
+	 */
 	var $ressource;
 
-	/* Path */
+	/**
+	 * Path
+	 *
+	 * @var String
+	 * @access private
+	 */
 	var $path;
 
-	/* Pointer Offset */
+	/**
+	 * Pointer Offset
+	 *
+	 * @var Integer
+	 * @access private
+	 */
 	var $position;
 
+	/**
+	 * This method is called immediately after the wrapper is initialized
+	 *
+	 * Connects to an SFTP server
+	 *
+	 * NOTE: This method is not get called for the following functions:
+	 * dir_opendir(), mkdir(), rename(), rmdir(), stream_metadata(), unlink() and url_stat()
+	 *
+	 * @param String $path
+	 * @param String $mode
+	 * @param Integer $options
+	 * @param String &$opened_path
+	 * @return bool
+	 * @access public
+	 */
 	function stream_open($path, $mode, $options, &$opened_path)
 	{
 		$url = parse_url($path);
@@ -96,7 +185,7 @@ class sftp_stream_wrapper{
 			return FALSE;
 		}
 
-		$this->position = 0;
+		$this->position = 0; // Pointer Initialisation
 
 		if ($options == STREAM_USE_PATH) {
 			$opened_path = $this->ressource->pwd();
@@ -105,6 +194,14 @@ class sftp_stream_wrapper{
 		return TRUE;
 	}
 
+	/**
+	 * This method is called in response to fclose()
+	 *
+	 * Close SFTP connection
+	 *
+	 * @return void
+	 * @access public
+	 */
 	function stream_close()
 	{
 		$this->ressource->disconnect();
@@ -112,6 +209,16 @@ class sftp_stream_wrapper{
 		$this->position = 0;
 	}
 
+	/**
+	 * This method is called in response to opendir()
+	 *
+	 * Open directory
+	 *
+	 * @param String $path
+	 * @param Integer $options
+	 * @return bool
+	 * @access public
+	 */
 	function dir_opendir($path, $options)
 	{
 		$this->stream_open($path, NULL, $options, $opened_path);
@@ -125,6 +232,16 @@ class sftp_stream_wrapper{
 		}
 	}
 
+	/**
+	 * This method is called in response to closedir()
+	 *
+	 * Close directory
+	 *
+	 * Alias of stream_close()
+	 *
+	 * @return bool
+	 * @access public
+	 */
 	function dir_closedir()
 	{
 		//$chdir = $this->ressource->chdir('..');
@@ -142,6 +259,17 @@ class sftp_stream_wrapper{
 		return TRUE;
 	}
 
+	/**
+	 * This method is called in response to readdir()
+	 *
+	 * Read entry from directory
+	 *
+	 * NOTE: In this method, Pointer Offset is an index
+	 * of the array returned by Net_SFTP::nlist()
+	 *
+	 * @return string
+	 * @access public
+	 */
 	function dir_readdir()
 	{
 		$nlist = $this->ressource->nlist($this->path);
@@ -158,6 +286,14 @@ class sftp_stream_wrapper{
 		}
 	}
 
+	/**
+	 * This method is called in response to rewinddir()
+	 *
+	 * Resets the directory pointer to the beginning of the directory
+	 *
+	 * @return bool
+	 * @access public
+	 */
 	function dir_rewinddir()
 	{
 		$this->position = 0;
@@ -212,14 +348,30 @@ class sftp_stream_wrapper{
 		}
 	}
 
+	/**
+	 * This method is called in response to stream_select()
+	 *
+	 * Not implemented
+	 *
+	 * @return bool
+	 * @access public
+	 */
 	function stream_cast($cast_as)
 	{
-		return FALSE; // Not implemented
+		return FALSE;
 	}
 
+	/**
+	 * This method is called in response to fflush()
+	 *
+	 * Not implemented
+	 *
+	 * @return bool
+	 * @access public
+	 */
 	function stream_flush()
 	{
-		return FALSE; // Not implemented
+		return FALSE;
 	}
 
 	function stream_metadata($path, $option, $var)
@@ -334,7 +486,7 @@ class sftp_stream_wrapper{
 				return false;
 		}
 
-		if ($newPosition >= 0) {
+		if ( $newPosition >= 0 ) {
 			$this->position = $newPosition;
 			return true;
 		} else {
@@ -342,9 +494,17 @@ class sftp_stream_wrapper{
 		}
 	}
 
+	/**
+	 * This method is called to set options on the stream
+	 *
+	 * Not implemented
+	 *
+	 * @return bool
+	 * @access public
+	 */
 	function stream_set_option($option, $arg1, $arg2)
 	{
-		return FALSE; // Not implemented
+		return FALSE;
 	}
 
 	function stream_stat()
@@ -426,7 +586,7 @@ class sftp_stream_wrapper{
 # Register 'ssh2.sftp' protocol
 ###################################################################
 
-stream_wrapper_register('ssh2.sftp', 'sftp_stream_wrapper')
+stream_wrapper_register('ssh2.sftp', 'SFTP_StreamWrapper')
 	or die ('Failed to register protocol');
 
 ?>
