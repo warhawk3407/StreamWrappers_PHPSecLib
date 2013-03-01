@@ -197,7 +197,7 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called in response to fclose()
 	 *
-	 * Close SFTP connection
+	 * Closes SFTP connection
 	 *
 	 * @return void
 	 * @access public
@@ -212,7 +212,7 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called in response to opendir()
 	 *
-	 * Open directory
+	 * Opens directory handle
 	 *
 	 * @param String $path
 	 * @param Integer $options
@@ -235,7 +235,7 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called in response to closedir()
 	 *
-	 * Close directory
+	 * Closes directory handle
 	 *
 	 * Alias of stream_close()
 	 *
@@ -262,7 +262,7 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called in response to readdir()
 	 *
-	 * Read entry from directory
+	 * Reads entry from directory
 	 *
 	 * NOTE: In this method, Pointer Offset is an index
 	 * of the array returned by Net_SFTP::nlist()
@@ -301,6 +301,17 @@ class SFTP_StreamWrapper{
 		return TRUE;
 	}
 
+	/**
+	 * Attempts to create the directory specified by path
+	 *
+	 * Makes directory
+	 *
+	 * @param String $path
+	 * @param Integer $mode
+	 * @param Integer $options
+	 * @return bool
+	 * @access public
+	 */
 	function mkdir($path, $mode, $options)
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
@@ -316,6 +327,16 @@ class SFTP_StreamWrapper{
 		}
 	}
 
+	/**
+	 * Attempts to remove the directory named by path
+	 *
+	 * Removes directory
+	 *
+	 * @param String $path
+	 * @param Integer $options
+	 * @return bool
+	 * @access public
+	 */
 	function rmdir($path, $options)
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
@@ -331,6 +352,16 @@ class SFTP_StreamWrapper{
 		}
 	}
 
+	/**
+	 * Attempts to rename path_from to path_to
+	 *
+	 * Renames a file or directory
+	 *
+	 * @param String $path_from
+	 * @param String $path_to
+	 * @return bool
+	 * @access public
+	 */
 	function rename($path_from, $path_to)
 	{
 		$this->stream_open($path_from, NULL, NULL, $opened_path);
@@ -353,6 +384,7 @@ class SFTP_StreamWrapper{
 	 *
 	 * Not implemented
 	 *
+	 * @param Integer $cast_as
 	 * @return bool
 	 * @access public
 	 */
