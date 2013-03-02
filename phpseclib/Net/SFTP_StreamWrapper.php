@@ -121,7 +121,7 @@ class SFTP_StreamWrapper{
 	 * SFTP VARS
 	 *
 	 * @var String
-	 * @see Net_SFTP_StreamWrapper::stream_open()
+	 * @see SFTP_StreamWrapper::stream_open()
 	 * @access private
 	 */
 	var $host;
@@ -138,7 +138,7 @@ class SFTP_StreamWrapper{
 	var $ressource;
 
 	/**
-	 * Path
+	 * SFTP Path
 	 *
 	 * @var String
 	 * @access private
@@ -212,7 +212,7 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called in response to opendir()
 	 *
-	 * Opens directory handle
+	 * Opens a directory handle
 	 *
 	 * @param String $path
 	 * @param Integer $options
@@ -235,7 +235,7 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called in response to closedir()
 	 *
-	 * Closes directory handle
+	 * Closes a directory handle
 	 *
 	 * Alias of stream_close()
 	 *
@@ -302,9 +302,9 @@ class SFTP_StreamWrapper{
 	}
 
 	/**
-	 * Attempts to create the directory specified by path
+	 * Attempts to create the directory specified by the path
 	 *
-	 * Makes directory
+	 * Makes a directory
 	 *
 	 * @param String $path
 	 * @param Integer $mode
@@ -328,9 +328,9 @@ class SFTP_StreamWrapper{
 	}
 
 	/**
-	 * Attempts to remove the directory named by path
+	 * Attempts to remove the directory named by the path
 	 *
-	 * Removes directory
+	 * Removes a directory
 	 *
 	 * @param String $path
 	 * @param Integer $options
@@ -385,7 +385,7 @@ class SFTP_StreamWrapper{
 	 * Not implemented
 	 *
 	 * @param Integer $cast_as
-	 * @return bool
+	 * @return ressource
 	 * @access public
 	 */
 	function stream_cast($cast_as)
@@ -406,6 +406,21 @@ class SFTP_StreamWrapper{
 		return FALSE;
 	}
 
+	/**
+	 * This method is called to set metadata on the stream. It is called when one of the following functions is called on a stream URL:
+	 * - touch()
+	 * - chmod()
+	 * - chown()
+	 * - chgrp()
+	 *
+	 * Changes stream options
+	 *
+	 * @param String $path
+	 * @param Integer $option
+	 * @param mixed $var
+	 * @return bool
+	 * @access public
+	 */
 	function stream_metadata($path, $option, $var)
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
@@ -477,6 +492,31 @@ class SFTP_StreamWrapper{
 		}
 	}
 
+	/**
+	 * This method is called to set options on the stream
+	 *
+	 * Not implemented
+	 *
+	 * @param Integer $option
+	 * @param Integer $arg1
+	 * @param Integer $arg2
+	 * @return bool
+	 * @access public
+	 */
+	function stream_set_option($option, $arg1, $arg2)
+	{
+		return FALSE;
+	}
+
+	/**
+	 * This method is called in response to fread() and fgets()
+	 *
+	 * Reads from stream
+	 *
+	 * @param Integer $count
+	 * @return String
+	 * @access public
+	 */
 	function stream_read($count)
 	{
 		$chunk = $this->ressource->get( $this->path, FALSE, $this->position, $count );
@@ -486,6 +526,32 @@ class SFTP_StreamWrapper{
 		return $chunk;
 	}
 
+	/**
+	 * This method is called in response to fwrite()
+	 *
+	 * Writes to stream
+	 *
+	 * @param String $data
+	 * @return Integer
+	 * @access public
+	 */
+	function stream_write($data)
+	{
+		$this->ressource->put($this->path, $data, NET_SFTP_STRING, $this->position);
+
+		$this->position += strlen($data);
+
+		return strlen($data);
+	}
+
+	/**
+	 * This method is called in response to feof()
+	 *
+	 * Tests for end-of-file on a file pointer
+	 *
+	 * @return bool
+	 * @access public
+	 */
 	function stream_eof()
 	{
 		$filesize = $this->ressource->size($this->path);
@@ -497,6 +563,16 @@ class SFTP_StreamWrapper{
 		}
 	}
 
+	/**
+	 * This method is called in response to fseek()
+	 *
+	 * Seeks to specific location in a stream
+	 *
+	 * @param Integer $offset
+	 * @param Integer $whence = SEEK_SET
+	 * @return bool
+	 * @access public
+	 */
 	function stream_seek($offset, $whence)
 	{
 		$filesize = $this->ressource->size($this->path);
@@ -527,18 +603,26 @@ class SFTP_StreamWrapper{
 	}
 
 	/**
-	 * This method is called to set options on the stream
+	 * This method is called in response to fseek() to determine the current position
 	 *
-	 * Not implemented
+	 * Retrieves the current position of a stream
 	 *
-	 * @return bool
+	 * @return Integer
 	 * @access public
 	 */
-	function stream_set_option($option, $arg1, $arg2)
+	function stream_tell()
 	{
-		return FALSE;
+		return $this->position;
 	}
 
+	/**
+	 * This method is called in response to fstat()
+	 *
+	 * Retrieves information about a file resource
+	 *
+	 * @return Array
+	 * @access public
+	 */
 	function stream_stat()
 	{
 		$stat = $this->ressource->stat($this->path);
@@ -554,45 +638,17 @@ class SFTP_StreamWrapper{
 		}
 	}
 
-	function stream_tell()
-	{
-		return $this->position;
-	}
-
-
-	function stream_truncate($new_size)
-	{
-		$data = $this->ressource->get( $this->path, FALSE, 0, $new_size );
-
-		$this->ressource->put($this->path, $data);
-
-		return TRUE;
-	}
-
-	function stream_write($data)
-	{
-		$this->ressource->put($this->path, $data, NET_SFTP_STRING, $this->position);
-
-		$this->position += strlen($data);
-
-		return strlen($data);
-	}
-
-	function unlink($path)
-	{
-		$this->stream_open($path, NULL, NULL, $opened_path);
-
-		$del = $this->ressource->delete($this->path);
-
-		$this->stream_close();
-
-		if( $del == 1 ) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
-	}
-
+	/**
+	 * This method is called in response to all stat() related functions
+	 *
+	 * Retrieves information about a file
+	 *
+	 * @see SFTP_StreamWrapper::stream_stat()
+	 * @param String $path
+	 * @param Integer $flags
+	 * @return array
+	 * @access public
+	 */
 	function url_stat($path, $flags)
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
@@ -609,6 +665,48 @@ class SFTP_StreamWrapper{
 			return $stat;
 		} else {
 			return array();
+		}
+	}
+
+	/**
+	 * Will respond to truncation, e.g., through ftruncate()
+	 *
+	 * Truncates a stream
+	 *
+	 * @param Integer $new_size
+	 * @return bool
+	 * @access public
+	 */
+	function stream_truncate($new_size)
+	{
+		$data = $this->ressource->get( $this->path, FALSE, 0, $new_size );
+
+		$this->ressource->put($this->path, $data);
+
+		return TRUE;
+	}
+
+	/**
+	 * Deletes filename specified by the path
+	 *
+	 * Deletes a file
+	 *
+	 * @param String $path
+	 * @return bool
+	 * @access public
+	 */
+	function unlink($path)
+	{
+		$this->stream_open($path, NULL, NULL, $opened_path);
+
+		$del = $this->ressource->delete($this->path);
+
+		$this->stream_close();
+
+		if( $del == 1 ) {
+			return TRUE;
+		} else {
+			return FALSE;
 		}
 	}
 
