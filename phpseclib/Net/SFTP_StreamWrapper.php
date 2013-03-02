@@ -13,11 +13,11 @@
  * ###################################################################
  * # Protocol									ssh2.sftp
  * ###################################################################
- * # Restricted by allow_url_fopen				Unknown
+ * # Restricted by allow_url_fopen				Yes
  * # Allows Reading								Yes
  * # Allows Writing								Yes
- * # Allows Appending							Unknown
- * # Allows Simultaneous Reading and Writing	Unknown
+ * # Allows Appending							Yes
+ * # Allows Simultaneous Reading and Writing	No
  * # Supports stat()							Yes
  * # Supports unlink()							Yes
  * # Supports rename()							Yes
@@ -69,6 +69,16 @@
  *		$url = "ssh2.sftp://".$user.':'.$pass.'@'.$host.':'.$port.$path;
  *
  *		print_r(stat($url));
+ *
+ *		echo "\r\n<hr>\r\n";
+ *
+ *		$handle = fopen($path, "r");
+ *		$contents = '';
+ *		while (!feof($handle)) {
+ *			$contents .= fread($handle, 8192);
+ *		}
+ *		fclose($handle);
+ *		echo $contents;
  * ?>
  * </code>
  */
@@ -259,7 +269,12 @@ class SFTP_StreamWrapper{
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
-		$mkdir = $this->ressource->mkdir($this->path, $mode, $options);
+		if ( $options === STREAM_MKDIR_RECURSIVE ) {
+			$mkdir = $this->ressource->mkdir($this->path, $mode, true);
+		}
+		else {
+			$mkdir = $this->ressource->mkdir($this->path, $mode, false);
+		}
 
 		$this->stream_close();
 
@@ -495,7 +510,7 @@ class SFTP_StreamWrapper{
 		$this->path = $url["path"];
 
 		// Connection
-		$this->ressource = new Net_SFTP($this->host.':'.$this->port);
+		$this->ressource = new Net_SFTP($this->host, $this->port);
 		if (!$this->ressource->login($this->user, $this->pass))
 		{
 			return FALSE;
@@ -541,6 +556,8 @@ class SFTP_StreamWrapper{
 	function stream_seek($offset, $whence)
 	{
 		$filesize = $this->ressource->size($this->path);
+
+		$newPosition = 0;
 
 		switch ($whence) {
 			case SEEK_SET:
@@ -694,7 +711,12 @@ class SFTP_StreamWrapper{
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
-		$stat = $this->ressource->stat($this->path);
+		if ( $flags === STREAM_URL_STAT_LINK ) {
+			$stat = $this->ressource->lstat($this->path);
+		}
+		else {
+			$stat = $this->ressource->stat($this->path);
+		}
 
 		$this->stream_close();
 
