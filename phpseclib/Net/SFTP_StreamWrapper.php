@@ -127,24 +127,12 @@ define('PHP_STREAM_META_ACCESS',		6);
 class SFTP_StreamWrapper{
 
 	/**
-	 * SFTP VARS
-	 *
-	 * @var String
-	 * @see SFTP_StreamWrapper::stream_open()
-	 * @access private
-	 */
-	var $host;
-	var $port;
-	var $user;
-	var $pass;
-
-	/**
 	 * SFTP Object
 	 *
 	 * @var Net_SFTP
 	 * @access private
 	 */
-	var $ressource;
+	var $sftp;
 
 	/**
 	 * SFTP Path
@@ -174,7 +162,7 @@ class SFTP_StreamWrapper{
 	 */
 	function dir_closedir()
 	{
-		//$chdir = $this->ressource->chdir('..');
+		//$chdir = $this->sftp->chdir('..');
 
 		$this->stream_close();
 
@@ -203,7 +191,7 @@ class SFTP_StreamWrapper{
 	{
 		$this->stream_open($path, NULL, $options, $opened_path);
 
-		$chdir = $this->ressource->chdir($this->path);
+		$chdir = $this->sftp->chdir($this->path);
 
 		if( $chdir == 1 ) {
 			return TRUE;
@@ -225,7 +213,7 @@ class SFTP_StreamWrapper{
 	 */
 	function dir_readdir()
 	{
-		$nlist = $this->ressource->nlist($this->path);
+		$nlist = $this->sftp->nlist($this->path);
 
 		if ( array_key_exists($this->position, $nlist) ) {
 			$filename = $nlist[$this->position];
@@ -270,10 +258,10 @@ class SFTP_StreamWrapper{
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		if ( $options === STREAM_MKDIR_RECURSIVE ) {
-			$mkdir = $this->ressource->mkdir($this->path, $mode, true);
+			$mkdir = $this->sftp->mkdir($this->path, $mode, true);
 		}
 		else {
-			$mkdir = $this->ressource->mkdir($this->path, $mode, false);
+			$mkdir = $this->sftp->mkdir($this->path, $mode, false);
 		}
 
 		$this->stream_close();
@@ -301,7 +289,7 @@ class SFTP_StreamWrapper{
 
 		$path_to_url = parse_url($path_to);
 
-		$rename = $this->ressource->rename($this->path, $path_to_url['path']);
+		$rename = $this->sftp->rename($this->path, $path_to_url['path']);
 
 		$this->stream_close();
 
@@ -326,7 +314,7 @@ class SFTP_StreamWrapper{
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
-		$rmdir = $this->ressource->rmdir($this->path);
+		$rmdir = $this->sftp->rmdir($this->path);
 
 		$this->stream_close();
 
@@ -361,7 +349,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_close()
 	{
-		$this->ressource->disconnect();
+		$this->sftp->disconnect();
 
 		$this->position = 0;
 	}
@@ -376,7 +364,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_eof()
 	{
-		$filesize = $this->ressource->size($this->path);
+		$filesize = $this->sftp->size($this->path);
 
 		if ($this->position >= $filesize) {
 			return TRUE;
@@ -419,7 +407,7 @@ class SFTP_StreamWrapper{
 
 		switch ($option) {
 			case PHP_STREAM_META_TOUCH:
-				$touch = $this->ressource->touch($this->path, $var[1], $var[0]);
+				$touch = $this->sftp->touch($this->path, $var[1], $var[0]);
 
 				$this->stream_close();
 
@@ -437,7 +425,7 @@ class SFTP_StreamWrapper{
 				break;
 
 			case PHP_STREAM_META_OWNER:
-				$chown = $this->ressource->chown($this->path, $var);
+				$chown = $this->sftp->chown($this->path, $var);
 
 				$this->stream_close();
 
@@ -455,7 +443,7 @@ class SFTP_StreamWrapper{
 				break;
 
 			case PHP_STREAM_META_GROUP:
-				$chgrp = $this->ressource->chgrp($this->path, $var);
+				$chgrp = $this->sftp->chgrp($this->path, $var);
 
 				$this->stream_close();
 
@@ -467,7 +455,7 @@ class SFTP_StreamWrapper{
 				break;
 
 			case PHP_STREAM_META_ACCESS:
-				$chmod = $this->ressource->chmod($var, $this->path);
+				$chmod = $this->sftp->chmod($var, $this->path);
 
 				$this->stream_close();
 
@@ -503,15 +491,16 @@ class SFTP_StreamWrapper{
 	{
 		$url = parse_url($path);
 
-		$this->host = $url["host"];
-		$this->port = $url["port"];
-		$this->user = $url["user"];
-		$this->pass = $url["pass"];
+		$host = $url["host"];
+		$port = $url["port"];
+		$user = $url["user"];
+		$pass = $url["pass"];
+
 		$this->path = $url["path"];
 
 		// Connection
-		$this->ressource = new Net_SFTP($this->host, $this->port);
-		if (!$this->ressource->login($this->user, $this->pass))
+		$this->sftp = new Net_SFTP($host, $port);
+		if (!$this->sftp->login($user, $pass))
 		{
 			return FALSE;
 		}
@@ -519,7 +508,7 @@ class SFTP_StreamWrapper{
 		$this->position = 0; // Pointer Initialisation
 
 		if ($options == STREAM_USE_PATH) {
-			$opened_path = $this->ressource->pwd();
+			$opened_path = $this->sftp->pwd();
 		}
 
 		return TRUE;
@@ -536,7 +525,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_read($count)
 	{
-		$chunk = $this->ressource->get( $this->path, FALSE, $this->position, $count );
+		$chunk = $this->sftp->get( $this->path, FALSE, $this->position, $count );
 
 		$this->position += strlen($chunk);
 
@@ -555,7 +544,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_seek($offset, $whence)
 	{
-		$filesize = $this->ressource->size($this->path);
+		$filesize = $this->sftp->size($this->path);
 
 		$newPosition = 0;
 
@@ -610,7 +599,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_stat()
 	{
-		$stat = $this->ressource->stat($this->path);
+		$stat = $this->sftp->stat($this->path);
 
 		if( !empty($stat) ) {
 			// mode fix
@@ -647,9 +636,9 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_truncate($new_size)
 	{
-		$data = $this->ressource->get( $this->path, FALSE, 0, $new_size );
+		$data = $this->sftp->get( $this->path, FALSE, 0, $new_size );
 
-		$this->ressource->put($this->path, $data);
+		$this->sftp->put($this->path, $data);
 
 		return TRUE;
 	}
@@ -665,7 +654,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_write($data)
 	{
-		$this->ressource->put($this->path, $data, NET_SFTP_STRING, $this->position);
+		$this->sftp->put($this->path, $data, NET_SFTP_STRING, $this->position);
 
 		$this->position += strlen($data);
 
@@ -685,7 +674,7 @@ class SFTP_StreamWrapper{
 	{
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
-		$del = $this->ressource->delete($this->path);
+		$del = $this->sftp->delete($this->path);
 
 		$this->stream_close();
 
@@ -712,10 +701,10 @@ class SFTP_StreamWrapper{
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		if ( $flags === STREAM_URL_STAT_LINK ) {
-			$stat = $this->ressource->lstat($this->path);
+			$stat = $this->sftp->lstat($this->path);
 		}
 		else {
-			$stat = $this->ressource->stat($this->path);
+			$stat = $this->sftp->stat($this->path);
 		}
 
 		$this->stream_close();
