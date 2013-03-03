@@ -28,7 +28,7 @@
  * @category	Net
  * @package		Net_SFTP_StreamWrapper
  * @author		Warhawk3407 a.k.a Nikita ROUSSEAU <warhawk3407@gmail.com>
- * @copyright	2013 Nikita Rousseau
+ * @copyright	© 2013 Nikita Rousseau
  * @license		http://www.opensource.org/licenses/mit-license.html  MIT License
  * @version		Release: @1.0.0@
  * @date		March 2013
@@ -132,7 +132,7 @@ class SFTP_StreamWrapper{
 	 * @var Net_SFTP
 	 * @access private
 	 */
-	var $sftp;
+	private $sftp;
 
 	/**
 	 * SFTP Path
@@ -140,7 +140,7 @@ class SFTP_StreamWrapper{
 	 * @var String
 	 * @access private
 	 */
-	var $path;
+	private $path;
 
 	/**
 	 * Pointer Offset
@@ -148,7 +148,7 @@ class SFTP_StreamWrapper{
 	 * @var Integer
 	 * @access private
 	 */
-	var $position;
+	private $position;
 
 	/**
 	 * This method is called in response to closedir()
@@ -162,17 +162,7 @@ class SFTP_StreamWrapper{
 	 */
 	function dir_closedir()
 	{
-		//$chdir = $this->sftp->chdir('..');
-
 		$this->stream_close();
-
-		/*
-		if( $chdir == 1 ) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
-		*/
 
 		return TRUE;
 	}
@@ -189,15 +179,16 @@ class SFTP_StreamWrapper{
 	 */
 	function dir_opendir($path, $options)
 	{
-		$this->stream_open($path, NULL, $options, $opened_path);
+		$url = parse_url($path);
 
-		$chdir = $this->sftp->chdir($this->path);
+        if ( !is_readable($path) || !is_dir($path) ) {
+            trigger_error("failed to open dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+            return FALSE;
+        }
 
-		if( $chdir == 1 ) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
+		$opendir = $this->stream_open($path, NULL, NULL, $opened_path);
+
+		return $opendir;
 	}
 
 	/**
@@ -266,11 +257,7 @@ class SFTP_StreamWrapper{
 
 		$this->stream_close();
 
-		if( $mkdir == 1 ) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
+		return $mkdir;
 	}
 
 	/**
@@ -293,11 +280,7 @@ class SFTP_StreamWrapper{
 
 		$this->stream_close();
 
-		if( $rename == 1) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
+		return $rename;
 	}
 
 	/**
@@ -312,17 +295,20 @@ class SFTP_StreamWrapper{
 	 */
 	function rmdir($path, $options)
 	{
+		$url = parse_url($path);
+
+        if ( !is_dir($path) ) {
+            trigger_error("failed to remove dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+            return FALSE;
+        }
+
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		$rmdir = $this->sftp->rmdir($this->path);
 
 		$this->stream_close();
 
-		if( $rmdir == 1 ) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
+		return $rmdir;
 	}
 
 	/**
@@ -410,65 +396,37 @@ class SFTP_StreamWrapper{
 				$touch = $this->sftp->touch($this->path, $var[1], $var[0]);
 
 				$this->stream_close();
-
-				if ($touch == 1) {
-					return TRUE;
-				} else {
-					return FALSE;
-				}
-				break;
+				return $touch;
 
 			case PHP_STREAM_META_OWNER_NAME:
 				$this->stream_close();
-
 				return FALSE;
-				break;
 
 			case PHP_STREAM_META_OWNER:
 				$chown = $this->sftp->chown($this->path, $var);
 
 				$this->stream_close();
-
-				if ($chown == 1) {
-					return TRUE;
-				} else {
-					return FALSE;
-				}
-				break;
+				return $chown;
 
 			case PHP_STREAM_META_GROUP_NAME:
 				$this->stream_close();
-
 				return FALSE;
-				break;
 
 			case PHP_STREAM_META_GROUP:
 				$chgrp = $this->sftp->chgrp($this->path, $var);
 
 				$this->stream_close();
-
-				if ($chgrp == 1) {
-					return TRUE;
-				} else {
-					return FALSE;
-				}
-				break;
+				return $chgrp;
 
 			case PHP_STREAM_META_ACCESS:
 				$chmod = $this->sftp->chmod($var, $this->path);
 
 				$this->stream_close();
-
-				if ($chmod == 1) {
-					return TRUE;
-				} else {
-					return FALSE;
-				}
-				break;
+				return $chmod;
 
 			default:
 				$this->stream_close();
-				return false;
+				return FALSE;
 		}
 	}
 
@@ -562,14 +520,14 @@ class SFTP_StreamWrapper{
 				break;
 
 			default:
-				return false;
+				return FALSE;
 		}
 
 		if ( $newPosition >= 0 ) {
 			$this->position = $newPosition;
-			return true;
+			return TRUE;
 		} else {
-			return false;
+			return FALSE;
 		}
 	}
 
@@ -672,17 +630,20 @@ class SFTP_StreamWrapper{
 	 */
 	function unlink($path)
 	{
+		$url = parse_url($path);
+
+        if ( !is_file($path) ) {
+            trigger_error("failed to remove file: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+            return FALSE;
+        }
+
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		$del = $this->sftp->delete($this->path);
 
 		$this->stream_close();
 
-		if( $del == 1 ) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
+		return $del;
 	}
 
 	/**
