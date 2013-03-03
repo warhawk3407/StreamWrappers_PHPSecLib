@@ -395,7 +395,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_flush()
 	{
-		return FALSE;
+		return TRUE;
 	}
 
 	/**
