@@ -181,10 +181,10 @@ class SFTP_StreamWrapper{
 	{
 		$url = parse_url($path);
 
-        if ( !is_readable($path) || !is_dir($path) ) {
-            trigger_error("failed to open dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
-            return FALSE;
-        }
+		if ( !is_readable($path) || !is_dir($path) ) {
+			trigger_error("failed to open dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+			return FALSE;
+		}
 
 		$opendir = $this->stream_open($path, NULL, NULL, $opened_path);
 
@@ -297,10 +297,10 @@ class SFTP_StreamWrapper{
 	{
 		$url = parse_url($path);
 
-        if ( !is_dir($path) ) {
-            trigger_error("failed to remove dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
-            return FALSE;
-        }
+		if ( !is_dir($path) ) {
+			trigger_error("failed to remove dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+			return FALSE;
+		}
 
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
@@ -632,10 +632,10 @@ class SFTP_StreamWrapper{
 	{
 		$url = parse_url($path);
 
-        if ( !is_file($path) ) {
-            trigger_error("failed to remove file: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
-            return FALSE;
-        }
+		if ( !is_file($path) ) {
+			trigger_error("failed to remove file: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+			return FALSE;
+		}
 
 		$this->stream_open($path, NULL, NULL, $opened_path);
 
