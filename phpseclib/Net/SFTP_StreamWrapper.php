@@ -198,6 +198,9 @@ class SFTP_StreamWrapper{
 	function dir_readdir()
 	{
 		$nlist = $this->sftp->nlist($this->path);
+		if ($nlist === false) {
+			return FALSE;
+		}
 
 		if ( array_key_exists($this->position, $nlist) ) {
 			$filename = $nlist[$this->position];
@@ -581,7 +584,7 @@ class SFTP_StreamWrapper{
 	 *
 	 * Retrieves information about a file resource
 	 *
-	 * @return Array
+	 * @return mixed
 	 * @access public
 	 */
 	function stream_stat()
@@ -595,7 +598,7 @@ class SFTP_StreamWrapper{
 
 			return $stat;
 		} else {
-			return array();
+			return FALSE;
 		}
 	}
 
@@ -679,7 +682,7 @@ class SFTP_StreamWrapper{
 	 * @see SFTP_StreamWrapper::stream_stat()
 	 * @param String $path
 	 * @param Integer $flags
-	 * @return array
+	 * @return mixed
 	 * @access public
 	 */
 	function url_stat($path, $flags)
@@ -705,7 +708,7 @@ class SFTP_StreamWrapper{
 
 			return $stat;
 		} else {
-			return array();
+			return FALSE;
 		}
 	}
 
