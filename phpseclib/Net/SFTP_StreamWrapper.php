@@ -179,13 +179,6 @@ class SFTP_StreamWrapper{
 	 */
 	function dir_opendir($path, $options)
 	{
-		$url = parse_url($path);
-
-		if ( !is_readable($path) || !is_dir($path) ) {
-			trigger_error("failed to open dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
-			return FALSE;
-		}
-
 		$opendir = $this->stream_open($path, NULL, NULL, $opened_path);
 
 		return $opendir;
@@ -238,6 +231,9 @@ class SFTP_StreamWrapper{
 	 *
 	 * Makes a directory
 	 *
+	 * NOTE: Only valid option is STREAM_MKDIR_RECURSIVE
+	 * http://www.php.net/manual/en/function.mkdir.php
+	 *
 	 * @param String $path
 	 * @param Integer $mode
 	 * @param Integer $options
@@ -246,7 +242,10 @@ class SFTP_StreamWrapper{
 	 */
 	function mkdir($path, $mode, $options)
 	{
-		$this->stream_open($path, NULL, NULL, $opened_path);
+		$connection = $this->stream_open($path, NULL, NULL, $opened_path);
+		if ($connection === false) {
+			return FALSE;
+		}
 
 		if ( $options === STREAM_MKDIR_RECURSIVE ) {
 			$mkdir = $this->sftp->mkdir($this->path, $mode, true);
@@ -263,7 +262,8 @@ class SFTP_StreamWrapper{
 	/**
 	 * Attempts to rename path_from to path_to
 	 *
-	 * Renames a file or directory
+	 * Attempts to rename oldname to newname, moving it between directories if necessary.
+	 * If newname exists, it will be overwritten.
 	 *
 	 * @param String $path_from
 	 * @param String $path_to
@@ -272,21 +272,48 @@ class SFTP_StreamWrapper{
 	 */
 	function rename($path_from, $path_to)
 	{
-		$this->stream_open($path_from, NULL, NULL, $opened_path);
+		$path1 = parse_url($path_from);
+		$path2 = parse_url($path_to);
+		unset($path1['path'], $path2['path']);
+		if ($path1 != $path2) {
+			return FALSE;
+		}
+		unset($path1, $path2);
 
-		$path_to_url = parse_url($path_to);
+		$connection = $this->stream_open($path_from, NULL, NULL, $opened_path);
+		if ($connection === false) {
+			return FALSE;
+		}
 
-		$rename = $this->sftp->rename($this->path, $path_to_url['path']);
+		$path_to = parse_url($path_to, PHP_URL_PATH);
 
-		$this->stream_close();
+		// "It is an error if there already exists a file with the name specified by newpath."
+		//  -- http://tools.ietf.org/html/draft-ietf-secsh-filexfer-02#section-6.5
+		if (!$this->sftp->rename($this->path, $path_to)) {
+			if ($this->sftp->stat($path_to)) {
+				$del = $this->sftp->delete($path_to, true);
+				$rename = $this->sftp->rename($this->path, $path_to);
 
-		return $rename;
+				$this->stream_close();
+				return $del && $rename;
+			}
+
+			$this->stream_close();
+			return FALSE;
+		}
+		else {
+			$this->stream_close();
+			return TRUE;
+		}
 	}
 
 	/**
 	 * Attempts to remove the directory named by the path
 	 *
 	 * Removes a directory
+	 *
+	 * NOTE: rmdir() does not have a $recursive parameter as mkdir() does
+	 * http://www.php.net/manual/en/streamwrapper.rmdir.php
 	 *
 	 * @param String $path
 	 * @param Integer $options
@@ -295,14 +322,10 @@ class SFTP_StreamWrapper{
 	 */
 	function rmdir($path, $options)
 	{
-		$url = parse_url($path);
-
-		if ( !is_dir($path) ) {
-			trigger_error("failed to remove dir: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+		$connection = $this->stream_open($path, NULL, NULL, $opened_path);
+		if ($connection === false) {
 			return FALSE;
 		}
-
-		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		$rmdir = $this->sftp->rmdir($this->path);
 
@@ -364,6 +387,8 @@ class SFTP_StreamWrapper{
 	 *
 	 * Not implemented
 	 *
+	 * NOTE: Always returns true because Net_SFTP doesn't cache stuff before writing
+	 *
 	 * @return bool
 	 * @access public
 	 */
@@ -389,7 +414,10 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_metadata($path, $option, $var)
 	{
-		$this->stream_open($path, NULL, NULL, $opened_path);
+		$connection = $this->stream_open($path, NULL, NULL, $opened_path);
+		if ($connection === false) {
+			return FALSE;
+		}
 
 		switch ($option) {
 			case PHP_STREAM_META_TOUCH:
@@ -435,8 +463,9 @@ class SFTP_StreamWrapper{
 	 *
 	 * Connects to an SFTP server
 	 *
-	 * NOTE: This method is not get called for the following functions:
+	 * NOTE: This method is not get called by default for the following functions:
 	 * dir_opendir(), mkdir(), rename(), rmdir(), stream_metadata(), unlink() and url_stat()
+	 * So I implemented a call to stream_open() at the beginning of the functions and stream_close() at the end
 	 *
 	 * @param String $path
 	 * @param String $mode
@@ -630,14 +659,10 @@ class SFTP_StreamWrapper{
 	 */
 	function unlink($path)
 	{
-		$url = parse_url($path);
-
-		if ( !is_file($path) ) {
-			trigger_error("failed to remove file: {$url['scheme']}://{$url['user']}@{$url['host']}:{$url['port']}{$url['path']}", E_USER_NOTICE);
+		$connection = $this->stream_open($path, NULL, NULL, $opened_path);
+		if ($connection === false) {
 			return FALSE;
 		}
-
-		$this->stream_open($path, NULL, NULL, $opened_path);
 
 		$del = $this->sftp->delete($this->path);
 
@@ -659,7 +684,10 @@ class SFTP_StreamWrapper{
 	 */
 	function url_stat($path, $flags)
 	{
-		$this->stream_open($path, NULL, NULL, $opened_path);
+		$connection = $this->stream_open($path, NULL, NULL, $opened_path);
+		if ($connection === false) {
+			return FALSE;
+		}
 
 		if ( $flags === STREAM_URL_STAT_LINK ) {
 			$stat = $this->sftp->lstat($this->path);
