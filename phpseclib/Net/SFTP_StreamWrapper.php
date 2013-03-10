@@ -151,6 +151,22 @@ class SFTP_StreamWrapper{
 	private $position;
 
 	/**
+	 * SFTP Connection Instances
+	 *
+	 * @var array
+	 * @access private
+	 */
+	private static $instances;
+
+	/**
+	 * Directory Listing
+	 *
+	 * @var array
+	 * @access private
+	 */
+	private $dir_entries;
+
+	/**
 	 * This method is called in response to closedir()
 	 *
 	 * Closes a directory handle
@@ -164,13 +180,20 @@ class SFTP_StreamWrapper{
 	{
 		$this->stream_close();
 
+		$this->dir_entries = FALSE;
+
 		return TRUE;
 	}
 
 	/**
 	 * This method is called in response to opendir()
 	 *
-	 * Opens a directory handle
+	 * Opens up a directory handle to be used in subsequent closedir(), readdir(), and rewinddir() calls
+	 *
+	 * NOTES:
+	 * It loads the entire directory contents into memory.
+	 * The only $options is "whether or not to enforce safe_mode (0x04)". Since safe mode was deprecated in 5.3 and removed in 5.4 we are going
+	 * to ignore it
 	 *
 	 * @param String $path
 	 * @param Integer $options
@@ -179,9 +202,13 @@ class SFTP_StreamWrapper{
 	 */
 	function dir_opendir($path, $options)
 	{
-		$opendir = $this->stream_open($path, NULL, NULL, $opened_path);
-
-		return $opendir;
+		if ( $this->stream_open($path, NULL, NULL, $opened_path) ) {
+			$this->dir_entries = $this->sftp->nlist($this->path);
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
 	}
 
 	/**
@@ -189,21 +216,19 @@ class SFTP_StreamWrapper{
 	 *
 	 * Reads entry from directory
 	 *
-	 * NOTE: In this method, Pointer Offset is an index
-	 * of the array returned by Net_SFTP::nlist()
+	 * NOTE: In this method, Pointer Offset is an index of the array returned by Net_SFTP::nlist()
 	 *
 	 * @return string
 	 * @access public
 	 */
 	function dir_readdir()
 	{
-		$nlist = $this->sftp->nlist($this->path);
-		if ($nlist === false) {
+		if ($this->dir_entries === false) {
 			return FALSE;
 		}
 
-		if ( array_key_exists($this->position, $nlist) ) {
-			$filename = $nlist[$this->position];
+		if ( isset($this->dir_entries[$this->position]) ) {
+			$filename = $this->dir_entries[$this->position];
 
 			$this->position += 1;
 
@@ -234,8 +259,7 @@ class SFTP_StreamWrapper{
 	 *
 	 * Makes a directory
 	 *
-	 * NOTE: Only valid option is STREAM_MKDIR_RECURSIVE
-	 * http://www.php.net/manual/en/function.mkdir.php
+	 * NOTE: Only valid option is STREAM_MKDIR_RECURSIVE ( http://www.php.net/manual/en/function.mkdir.php )
 	 *
 	 * @param String $path
 	 * @param Integer $mode
@@ -315,8 +339,7 @@ class SFTP_StreamWrapper{
 	 *
 	 * Removes a directory
 	 *
-	 * NOTE: rmdir() does not have a $recursive parameter as mkdir() does
-	 * http://www.php.net/manual/en/streamwrapper.rmdir.php
+	 * NOTE: rmdir() does not have a $recursive parameter as mkdir() does ( http://www.php.net/manual/en/streamwrapper.rmdir.php )
 	 *
 	 * @param String $path
 	 * @param Integer $options
@@ -340,7 +363,7 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called in response to stream_select()
 	 *
-	 * Not implemented
+	 * Retrieves the underlaying resource
 	 *
 	 * @param Integer $cast_as
 	 * @return ressource
@@ -348,7 +371,7 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_cast($cast_as)
 	{
-		return FALSE;
+		return $this->sftp->fsock;
 	}
 
 	/**
@@ -361,7 +384,13 @@ class SFTP_StreamWrapper{
 	 */
 	function stream_close()
 	{
-		$this->sftp->disconnect();
+		// We do not really close connections because
+		// connections are assigned to a class static variable, so the Net_SFTP object will persist
+		// even after the stream object has been destroyed. But even without that, it's probably
+		// unnecessary as it'd be garbage collected out anyway.
+		// http://www.frostjedi.com/phpbb3/viewtopic.php?f=46&t=167493&sid=3161a478bd0bb359f6cefc956d6ac488&start=15#p391181
+
+		//$this->sftp->disconnect();
 
 		$this->position = 0;
 	}
@@ -387,8 +416,6 @@ class SFTP_StreamWrapper{
 
 	/**
 	 * This method is called in response to fflush()
-	 *
-	 * Not implemented
 	 *
 	 * NOTE: Always returns true because Net_SFTP doesn't cache stuff before writing
 	 *
@@ -470,6 +497,8 @@ class SFTP_StreamWrapper{
 	 * dir_opendir(), mkdir(), rename(), rmdir(), stream_metadata(), unlink() and url_stat()
 	 * So I implemented a call to stream_open() at the beginning of the functions and stream_close() at the end
 	 *
+	 * The SSH2 wrapper will also reuse open connections
+	 *
 	 * @param String $path
 	 * @param String $mode
 	 * @param Integer $options
@@ -488,11 +517,27 @@ class SFTP_StreamWrapper{
 
 		$this->path = $url["path"];
 
-		// Connection
-		$this->sftp = new Net_SFTP($host, $port);
-		if (!$this->sftp->login($user, $pass))
+		$connection_uuid = md5( $host.$user ); // Generate a unique ID for the current connection
+
+		if ( isset(self::$instances[$connection_uuid]) )
 		{
-			return FALSE;
+			// Get previously established connection
+			$this->sftp = self::$instances[$connection_uuid];
+		}
+		else
+		{
+			// Connection
+			$sftp = new Net_SFTP($host, $port);
+			if (!$sftp->login($user, $pass))
+			{
+				return FALSE;
+			}
+
+			// Store connection instance
+			self::$instances[$connection_uuid] = $sftp;
+
+			// Get current connection
+			$this->sftp = $sftp;
 		}
 
 		$this->position = 0; // Pointer Initialisation
@@ -620,17 +665,19 @@ class SFTP_StreamWrapper{
 	 *
 	 * Truncates a stream
 	 *
+	 * NOTE:
+	 * If $new_size is larger than the file then the file is extended with null bytes.
+	 * If $new_size is smaller than the file then the file is truncated to that size.
+	 *
+	 * ( http://www.php.net/manual/en/function.ftruncate.php )
+	 *
 	 * @param Integer $new_size
 	 * @return bool
 	 * @access public
 	 */
 	function stream_truncate($new_size)
 	{
-		$data = $this->sftp->get( $this->path, FALSE, 0, $new_size );
-
-		$this->sftp->put($this->path, $data);
-
-		return TRUE;
+		return $this->sftp->truncate( $this->path, $new_size );
 	}
 
 	/**
