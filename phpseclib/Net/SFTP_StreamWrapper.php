@@ -72,7 +72,7 @@
  *
  *		echo "\r\n<hr>\r\n";
  *
- *		$handle = fopen($path, "r");
+ *		$handle = fopen($url, "r");
  *		$contents = '';
  *		while (!feof($handle)) {
  *			$contents .= fread($handle, 8192);
