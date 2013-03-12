@@ -27,8 +27,9 @@
  *
  * @category	Net
  * @package		Net_SFTP_StreamWrapper
- * @author		Warhawk3407 a.k.a Nikita ROUSSEAU <warhawk3407@gmail.com>
- * @copyright	© 2013 Nikita Rousseau
+ * @author		Nikita ROUSSEAU <warhawk3407@gmail.com>
+ * @author		Jim WIGGINTON <terrafrost@php.net>
+ * @copyright	© 2013
  * @license		http://www.opensource.org/licenses/mit-license.html  MIT License
  * @version		Release: @1.0.0@
  * @date		March 2013
@@ -95,25 +96,9 @@ if (!class_exists('Net_SFTP')) {
 /**
  * Check PHP_VERSION
  */
-if (version_compare(PHP_VERSION, '5.4.0') == -1) {
-	exit('PHP 5.4.0 is required!');
-}
-
-
-
-/**
- * Stream Metadata: Engine part
- *
- * The options supported currently are:
- */
-define('PHP_STREAM_META_TOUCH',			1);
-define('PHP_STREAM_META_OWNER_NAME',	2);
-define('PHP_STREAM_META_OWNER',			3);
-define('PHP_STREAM_META_GROUP_NAME',	4);
-define('PHP_STREAM_META_GROUP',			5);
-define('PHP_STREAM_META_ACCESS',		6);
-
-
+//if (version_compare(PHP_VERSION, '5.4.0') == -1) {
+//	exit('PHP 5.4.0 is required!');
+//}
 
 /**
  * Pure-PHP implementations of Net_SFTP as a stream wrapper class
@@ -324,14 +309,10 @@ class SFTP_StreamWrapper{
 				$this->stream_close();
 				return $del && $rename;
 			}
+		}
 
-			$this->stream_close();
-			return FALSE;
-		}
-		else {
-			$this->stream_close();
-			return TRUE;
-		}
+		$this->stream_close();
+		return TRUE;
 	}
 
 	/**
@@ -450,33 +431,33 @@ class SFTP_StreamWrapper{
 		}
 
 		switch ($option) {
-			case PHP_STREAM_META_TOUCH:
+			case 1: // PHP_STREAM_META_TOUCH
 				$touch = $this->sftp->touch($this->path, $var[1], $var[0]);
 
 				$this->stream_close();
 				return $touch;
 
-			case PHP_STREAM_META_OWNER_NAME:
+			case 2: // PHP_STREAM_META_OWNER_NAME
 				$this->stream_close();
 				return FALSE;
 
-			case PHP_STREAM_META_OWNER:
+			case 3: // PHP_STREAM_META_OWNER
 				$chown = $this->sftp->chown($this->path, $var);
 
 				$this->stream_close();
 				return $chown;
 
-			case PHP_STREAM_META_GROUP_NAME:
+			case 4: // PHP_STREAM_META_GROUP_NAME
 				$this->stream_close();
 				return FALSE;
 
-			case PHP_STREAM_META_GROUP:
+			case 5: // PHP_STREAM_META_GROUP
 				$chgrp = $this->sftp->chgrp($this->path, $var);
 
 				$this->stream_close();
 				return $chgrp;
 
-			case PHP_STREAM_META_ACCESS:
+			case 6: // PHP_STREAM_META_ACCESS
 				$chmod = $this->sftp->chmod($var, $this->path);
 
 				$this->stream_close();
@@ -761,10 +742,9 @@ class SFTP_StreamWrapper{
 
 }
 
-###################################################################
-# Register 'ssh2.sftp' protocol
-###################################################################
-
+/**
+ * Register 'ssh2.sftp' protocol
+ */
 stream_wrapper_register('ssh2.sftp', 'SFTP_StreamWrapper')
 	or die ('Failed to register protocol');
 
