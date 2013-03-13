@@ -19,6 +19,7 @@ for *PHP Secure Communications Library* (PHPSecLib)
 > This class implements a read/write SFTP stream wrapper based on 'phpseclib'
 
 - Requirement:	phpseclib - PHP Secure Communications Library
-- Filename:	SFTP_StreamWrapper.php
-- Classname:	SFTP_StreamWrapper
-- Protocol:	ssh2.sftp
+- Filename:		SFTP_StreamWrapper.php
+- Classname:		SFTP_StreamWrapper
+- Protocol:		`sftp://`
+- Version:		`Release: @1.1.0@`

@@ -3,16 +3,17 @@
 /**
  * PHP 5.4.0
  *
- * This class implements a read/write SFTP stream wrapper based on 'phpseclib'
+ * This class implements a read/write SFTP stream wrapper based on "phpseclib"
  *
  * Requirement:	phpseclib - PHP Secure Communications Library
  *
  * Filename:	SFTP_StreamWrapper.php
  * Classname:	SFTP_StreamWrapper
  *
- * ###################################################################
- * # Protocol									ssh2.sftp
- * ###################################################################
+ * #######################################################################
+ * # Protocol									sftp://
+ * #######################################################################
+ * # Context Options							No
  * # Restricted by allow_url_fopen				Yes
  * # Allows Reading								Yes
  * # Allows Writing								Yes
@@ -23,7 +24,9 @@
  * # Supports rename()							Yes
  * # Supports mkdir()							Yes
  * # Supports rmdir()							Yes
- * ###################################################################
+ * #######################################################################
+ * # Possible Modes For fopen()					r, r+, w, w+, a, a+, c, c+
+ * #######################################################################
  *
  * @category	Net
  * @package		Net_SFTP_StreamWrapper
@@ -31,7 +34,7 @@
  * @author		Jim WIGGINTON <terrafrost@php.net>
  * @copyright	© 2013
  * @license		http://www.opensource.org/licenses/mit-license.html  MIT License
- * @version		Release: @1.0.0@
+ * @version		Release: @1.1.0@
  * @date		March 2013
  */
 
@@ -67,7 +70,7 @@
  *		$pass = 'secret';
  *		$path = '/home/user/file';
  *
- *		$url = "ssh2.sftp://".$user.':'.$pass.'@'.$host.':'.$port.$path;
+ *		$url = "sftp://".$user.':'.$pass.'@'.$host.':'.$port.$path;
  *
  *		print_r(stat($url));
  *
@@ -104,7 +107,7 @@ if (!class_exists('Net_SFTP')) {
  * Pure-PHP implementations of Net_SFTP as a stream wrapper class
  *
  * @author	Nikita ROUSSEAU <warhawk3407@gmail.com>
- * @version	1.0.0
+ * @version	1.1.0
  * @access	public
  * @package	Net_SFTP_StreamWrapper
  * @link	http://www.php.net/manual/en/class.streamwrapper.php
@@ -138,12 +141,21 @@ class SFTP_StreamWrapper{
 	/**
 	 * Context resource
 	 *
-	 * Technically this needs to be publically accessible so PHP can set it directly
-	 *
 	 * @var Resource
 	 * @access public
 	 */
 	var $context;
+
+	/**
+	 * Mode
+	 *
+	 * SUPPORTED: 		r, r+, w, w+, a, a+, c, c+
+	 * NOT SUPPORTED:	x, x+
+	 *
+	 * @var String
+	 * @access private
+	 */
+	private $mode;
 
 	/**
 	 * SFTP Connection Instances
@@ -359,7 +371,7 @@ class SFTP_StreamWrapper{
 	 * Retrieves the underlaying resource
 	 *
 	 * @param Integer $cast_as
-	 * @return ressource
+	 * @return resource
 	 * @access public
 	 */
 	function stream_cast($cast_as)
@@ -504,7 +516,7 @@ class SFTP_StreamWrapper{
 	 * dir_opendir(), mkdir(), rename(), rmdir(), stream_metadata(), unlink() and url_stat()
 	 * So I implemented a call to stream_open() at the beginning of the functions and stream_close() at the end
 	 *
-	 * The SSH2 wrapper will also reuse open connections
+	 * The wrapper will also reuse open connections
 	 *
 	 * @param String $path
 	 * @param String $mode
@@ -552,7 +564,50 @@ class SFTP_StreamWrapper{
 			$this->sftp = $sftp;
 		}
 
-		$this->position = 0; // Pointer Initialisation
+		$filesize = $this->sftp->size($this->path);
+
+		if (isset($mode)) {
+			$this->mode = preg_replace('#[bt]$#', '', $mode);
+		}
+		else {
+			$this->mode = 'r';
+		}
+
+		switch ($this->mode[0]) {
+			case 'r':
+				if ($filesize === FALSE) {
+					return FALSE;
+				}
+				$this->position = 0;
+				break;
+			case 'w':
+				$this->position = 0;
+				if ($filesize === FALSE) {
+					$this->sftp->touch( $this->path );
+				}
+				else {
+					$this->sftp->truncate( $this->path, 0 );
+				}
+				break;
+			case 'a':
+				if ($filesize === FALSE) {
+					$this->position = 0;
+					$this->sftp->touch( $this->path );
+				}
+				else {
+					$this->position = $filesize;
+				}
+				break;
+			case 'c':
+				$this->position = 0;
+				if ($filesize === FALSE) {
+					$this->sftp->touch( $this->path );
+				}
+				break;
+
+			default:
+				return FALSE;
+		}
 
 		if ($options == STREAM_USE_PATH) {
 			$opened_path = $this->sftp->pwd();
@@ -567,11 +622,20 @@ class SFTP_StreamWrapper{
 	 * Reads from stream
 	 *
 	 * @param Integer $count
-	 * @return String
+	 * @return mixed
 	 * @access public
 	 */
 	function stream_read($count)
 	{
+		switch ($this->mode) {
+			case 'w':
+			case 'a':
+			case 'x':
+			case 'x+':
+			case 'c':
+				return FALSE;
+		}
+
 		$chunk = $this->sftp->get( $this->path, FALSE, $this->position, $count );
 
 		$this->position += strlen($chunk);
@@ -593,31 +657,27 @@ class SFTP_StreamWrapper{
 	{
 		$filesize = $this->sftp->size($this->path);
 
-		$newPosition = 0;
-
 		switch ($whence) {
 			case SEEK_SET:
-				$newPosition = $offset;
-				break;
+                if ($offset >= $filesize || $offset < 0) {
+                    return FALSE;
+                }
+                break;
 
 			case SEEK_CUR:
-				$newPosition += $offset;
+				$offset += $this->position;
 				break;
 
 			case SEEK_END:
-				$newPosition = $filesize + $offset;
+				$offset += $filesize;
 				break;
 
 			default:
 				return FALSE;
 		}
 
-		if ( $newPosition >= 0 ) {
-			$this->position = $newPosition;
-			return TRUE;
-		} else {
-			return FALSE;
-		}
+		$this->position = $offset;
+		return TRUE;
 	}
 
 	/**
@@ -699,11 +759,18 @@ class SFTP_StreamWrapper{
 	 * Writes to stream
 	 *
 	 * @param String $data
-	 * @return Integer
+	 * @return mixed
 	 * @access public
 	 */
 	function stream_write($data)
 	{
+		switch ($this->mode) {
+			case 'r':
+			case 'x':
+			case 'x+':
+				return FALSE;
+		}
+
 		$this->sftp->put($this->path, $data, NET_SFTP_STRING, $this->position);
 
 		$this->position += strlen($data);
@@ -775,9 +842,9 @@ class SFTP_StreamWrapper{
 }
 
 /**
- * Register 'ssh2.sftp' protocol
+ * Register "sftp://" protocol
  */
-stream_wrapper_register('ssh2.sftp', 'SFTP_StreamWrapper')
+stream_wrapper_register('sftp', 'SFTP_StreamWrapper')
 	or die ('Failed to register protocol');
 
 ?>
