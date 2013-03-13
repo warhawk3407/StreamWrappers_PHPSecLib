@@ -136,7 +136,19 @@ class SFTP_StreamWrapper{
 	private $position;
 
 	/**
+	 * Context resource
+	 *
+	 * Technically this needs to be publically accessible so PHP can set it directly
+	 *
+	 * @var Resource
+	 * @access public
+	 */
+	var $context;
+
+	/**
 	 * SFTP Connection Instances
+	 *
+	 * Rather than re-create the connection we re-use instances if possible
 	 *
 	 * @var array
 	 * @access private
@@ -409,6 +421,20 @@ class SFTP_StreamWrapper{
 	}
 
 	/**
+	 * Advisory file locking
+	 *
+	 * Not Implemented
+	 *
+	 * @param Integer $operation
+	 * @return Boolean
+	 * @access public
+	*/
+	function stream_lock($operation)
+	{
+		return FALSE;
+	}
+
+	/**
 	 * This method is called to set metadata on the stream. It is called when one of the following functions is called on a stream URL:
 	 * - touch()
 	 * - chmod()
@@ -498,7 +524,7 @@ class SFTP_StreamWrapper{
 
 		$this->path = $url["path"];
 
-		$connection_uuid = md5( $host.$user ); // Generate a unique ID for the current connection
+		$connection_uuid = md5( $host.$port.$user ); // Generate a unique ID for the current connection
 
 		if ( isset(self::$instances[$connection_uuid]) )
 		{
@@ -507,10 +533,15 @@ class SFTP_StreamWrapper{
 		}
 		else
 		{
+			//$context = stream_context_get_options($this->context);
+
+			if (!isset($user) || !isset($pass)) {
+				return FALSE;
+			}
+
 			// Connection
-			$sftp = new Net_SFTP($host, $port);
-			if (!$sftp->login($user, $pass))
-			{
+			$sftp = new Net_SFTP($host, isset($port) ? $port : 22);
+			if (!$sftp->login($user, $pass)) {
 				return FALSE;
 			}
 
@@ -592,12 +623,13 @@ class SFTP_StreamWrapper{
 	/**
 	 * This method is called to set options on the stream
 	 *
-	 * Not implemented
+	 * STREAM_OPTION_WRITE_BUFFER isn't supported for the same reason stream_flush() isn't.
+	 * The other two aren't supported because of limitations in Net_SFTP.
 	 *
 	 * @param Integer $option
 	 * @param Integer $arg1
 	 * @param Integer $arg2
-	 * @return bool
+	 * @return Boolean
 	 * @access public
 	 */
 	function stream_set_option($option, $arg1, $arg2)
