@@ -575,9 +575,6 @@ class SFTP_StreamWrapper{
 
 		switch ($this->mode[0]) {
 			case 'r':
-				if ($filesize === FALSE) {
-					return FALSE;
-				}
 				$this->position = 0;
 				break;
 			case 'w':
